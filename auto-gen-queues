@@ -1,0 +1,3 @@
+#change the target address range to match what you want to generate.
+:local x
+:for x from 2 to 254 do={/queue simple add target-address="192.168.110.$x" queue="default/default"}
