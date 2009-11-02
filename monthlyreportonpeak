@@ -1,0 +1,99 @@
+:local pos1
+:local pos2
+:local pos3
+:local pos4
+:local pos5
+:local pos6
+:local pos7
+:local pos8
+:local pos9
+:local content
+:local i
+:local sitename
+:local onpeakgigs
+:local offpeakgigs
+:local email
+:local megstotal
+:local totalcurrent
+:local bytesdowncurrent
+:local bytesupcurrent
+:local megsdownonpeak
+:local megsdownoffpeak
+:local megsupcurrent
+:local onpeakpercentage
+:local offpeakpercentage
+:local warninglevel
+:local warn
+:local update
+:local newwarning
+:local bytesdownonpeaksaved
+:local bytesdownoffpeaksaved
+:local bytestotalonpeak
+:local bytestotaloffpeak
+
+#This version created by Andrew Cox - www.accessplus.com.au
+#v2.0 Updated 24/June/2009
+:log info "------ Begining Monthly Usage Reports -------"
+
+#For each queue in the list
+:foreach i in=[/queue simple find comment !=""] do={
+
+#Pull comment out of queue and divide up accordingly
+:set content [/queue simple get $i comment]
+
+#Determine variables from comment
+#Format is: sitename ! gigsallowed on peak / gigsallowed off peak # who-to-email ! last warning level(0-50-75-90-99) # stored onpeak / stored offpeak
+:if ([:find $content "!"] != "") do={
+  :set pos1 [:find $content "!"]
+  :set pos4 [:len $content]
+  :set pos2 ([:find [:pick $content ($pos1+1) $pos4] "#"]+$pos1+1)
+  :set pos3 ([:find [:pick $content ($pos2+1) $pos4] "!"]+$pos2+1)
+  :set sitename [:pick $content 0 ($pos1)]
+  :set pos7 ([:find [:pick $content ($pos1+1) $pos2] "/"]+$pos1+1)
+  :set onpeakgigs [:pick $content ($pos1+1) $pos7]
+  :set offpeakgigs [:pick $content ($pos7+1) $pos2]
+  :set email [:pick $content ($pos2+1) ($pos3)]
+  :set totalcurrent [/queue simple get $i bytes]
+  :set pos5 [:find $totalcurrent "/"]
+  :set pos6 [:len $totalcurrent]
+  :set bytesupcurrent ([:pick $totalcurrent 0 ($pos5)])
+  :set bytesdowncurrent ([:pick $totalcurrent ($pos5+1) $pos6])
+  :set megsupcurrent ($bytesupcurrent / 1048576)
+  :set pos8 ([:find [:pick $content ($pos3+7) $pos4] "/"]+$pos3+7)
+  :set bytesdownonpeaksaved ([:pick $content ($pos3+7) $pos8])
+  :set bytesdownoffpeaksaved ([:pick $content ($pos8+1) $pos4])
+  :set bytestotalonpeak ($bytesdowncurrent + $bytesdownonpeaksaved)
+  :set bytestotaloffpeak ($bytesdownoffpeaksaved)
+  :set megsdownonpeak ($bytestotalonpeak / 1048576)
+  :set megsdownoffpeak ($bytestotaloffpeak / 1048576)
+
+#Begin calculating usage percentage
+  :set onpeakpercentage (($bytestotalonpeak*100)/( $onpeakgigs*1073741824))
+  :set offpeakpercentage (($bytestotaloffpeak*100)/($offpeakgigs*1073741824))
+  :log info "$sitename: OnPeak $onpeakpercentage% OffPeak $offpeakpercentage%"
+
+:if ([$email] != "" ) do={
+/tool e-mail send to=$email from="user@example.com" server="127.0.0.1" subject="$sitename: Monthly Report" body="This message is to inform you of the full monthly usage for $sitename
+
+In this month this site has downloaded $megsdownonpeak MB on peak, which is $onpeakpercentage% of the $onpeakgigs GB monthly download allowance.
+In this month this site has downloaded $megsdownoffpeak MB off peak, which is $offpeakpercentage% of the $offpeakgigs GB monthly download allowance.
+
+This is an Automatically generated E-mail that is sent out at the end of each month.
+
+Traffic Monitor System,
+user@example.com"
+:log info "Sent monthly report for $sitename to $email"
+}
+#Send email to support/accounts also
+  /tool e-mail send to="accounts@example.com" from="user@example.com" server="127.0.0.1" subject="$sitename: Monthly Report" body="Full monthly usage for $sitename
+In this month this site has downloaded $megsdownonpeak MB on peak, which is $onpeakpercentage% of the $onpeakgigs GB monthly download allowance.
+In this month this site has downloaded $megsdownoffpeak MB off peak, which is $offpeakpercentage% of the $offpeakgigs GB monthly download allowance.
+
+Traffic Monitor System,
+user@example.com
+Please report any errors in this message to user@example.com"
+#Set warning level on queue name back to 00 and reset counters
+/queue simple set $i comment="$sitename!$onpeakgigs/$offpeakgigs#$email!00/00#0000/0000"
+/queue simple reset-counters $i
+}
+}

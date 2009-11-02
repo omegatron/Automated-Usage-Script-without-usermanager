@@ -1,0 +1,14 @@
+:local date
+:local time
+:local day
+:local month
+:local year
+:local hour
+:global found ""
+ 
+:set date [/system clock get date]
+:set time [/system clock get time]
+:set day [:pick $date 4 6]
+:set hour [:pick $time 0 2]
+
+:if ([$day] = "26" ) do={ :if ([$hour] = "00" ) do={:set found "true" } else={ :set found "false" } } else={ :set found "false" }

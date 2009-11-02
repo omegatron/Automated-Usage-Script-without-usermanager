@@ -1,0 +1,36 @@
+:local date
+:local time
+:local day
+:local month
+:local year
+:local hour
+ 
+:set date [/system clock get date]
+:set time [/system clock get time]
+:set day [:pick $date 4 6]
+:set hour [:pick $time 0 2]
+
+:if ([$hour] = "00") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "01") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "02") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "03") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "04") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "05") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "06") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "07") do={/system script run usagereportoffpeak; :log info "--Completed off Peak Report--"}
+:if ([$hour] = "08") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "09") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "10") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "11") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "12") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "13") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "14") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "15") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "16") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "17") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "18") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "19") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "20") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "21") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "22") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}
+:if ([$hour] = "23") do={/system script run usagereportonpeak; :log info "--Completed On Peak Report--"}

@@ -1,0 +1,126 @@
+:local pos1
+:local pos2
+:local pos3
+:local pos4
+:local pos5
+:local pos6
+:local pos7
+:local pos8
+:local pos9
+:local content
+:local i
+:local sitename
+:local onpeakgigs
+:local offpeakgigs
+:local email
+:local megstotal
+:local totalcurrent
+:local bytesdowncurrent
+:local bytesupcurrent
+:local megsdowncurrent
+:local megsupcurrent
+:local percentage
+:local lastonpeakwarning
+:local lastoffpeakwarning
+:local warninglevel
+:local warn
+:local update
+:local newwarning
+:local bytesdownonpeaksaved
+:local bytesdownoffpeaksaved
+:local bytestotal
+
+#Script based on Automated billing script at http://wiki.mikrotik.com/wiki/AutomatedBilling
+#Details:
+#This script checks all current simple queues and using values stored in the queue comment will allow you keep track of usage by each site
+#The details stored in the queue are broken down and used to determine when a user should be sent a usage warning at 50 75 90 and 100%
+#You can create/modify a new entry as long as you follow this format
+#1) If you just want to name an entry you may do so like "XYZ Router" in the queue name
+#2) If you want to determine a data limit, enter it like "sitename!gigabytelimit#emailaddress!00#0000" into the comment.
+#3) If you just want to enter a comment on its own, you can do this so long as you don't have an "!" in the field
+#Breaking it down: sitename is a descriptive name, gigabyte limit is the monthy limit, email address is the address you want notified 
+#00 is the last percentage warning level for this user, 0000 is the default value for a new data store
+#This version created by Andrew Cox - www.accessplus.com.au
+#v1.4 Updated 15/June/2009
+:log info "------ Begining Daily Usage Reports -------"
+
+#For each queue in the list
+:foreach i in=[/queue simple find comment !=""] do={
+
+#Pull comment out of queue and divide up accordingly
+:set content [/queue simple get $i comment]
+
+#Determine variables from comment
+#Format is: sitename ! gigsallowed on peak / gigsallowed off peak # who-to-email ! last warning level(0-50-75-90-99) # stored onpeak / stored offpeak
+:if ([:find $content "!"] != "") do={
+  :set pos1 [:find $content "!"]
+  :set pos4 [:len $content]
+  :set pos2 ([:find [:pick $content ($pos1+1) $pos4] "#"]+$pos1+1)
+  :set pos3 ([:find [:pick $content ($pos2+1) $pos4] "!"]+$pos2+1)
+  :set sitename [:pick $content 0 ($pos1)]
+  :set pos7 ([:find [:pick $content ($pos1+1) $pos2] "/"]+$pos1+1)
+  :set onpeakgigs [:pick $content ($pos1+1) $pos7]
+  :set offpeakgigs [:pick $content ($pos7+1) $pos2]
+  :set email [:pick $content ($pos2+1) ($pos3)]
+  :set totalcurrent [/queue simple get $i bytes]
+  :set lastonpeakwarning [:pick $content ($pos3+1) ($pos3+3)]
+  :set lastoffpeakwarning [:pick $content ($pos3+4) ($pos3+6)]
+  :set pos5 [:find $totalcurrent "/"]
+  :set pos6 [:len $totalcurrent]
+  :set bytesupcurrent ([:pick $totalcurrent 0 ($pos5)])
+  :set bytesdowncurrent ([:pick $totalcurrent ($pos5+1) $pos6])
+  :set megsupcurrent ($bytesupcurrent / 1048576)
+  :set pos8 ([:find [:pick $content ($pos3+7) $pos4] "/"]+$pos3+7)
+  :set bytesdownonpeaksaved ([:pick $content ($pos3+7) $pos8])
+  :set bytesdownoffpeaksaved ([:pick $content ($pos8+1) $pos4])
+  :set bytestotal ($bytesdowncurrent + $bytesdownonpeaksaved)
+  :set megsdowncurrent ($bytestotal / 1048576)
+
+#Begin calculating usage percentage
+  :set percentage ( ( $bytestotal * 100) / ($onpeakgigs * 1073741824 ) )
+  :log info "$sitename: $percentage%"
+  :if ([$percentage] < 50) do={ :set warninglevel "00"; /queue simple set $i max-limit=0/0}
+  :if ([$percentage] > 50) do={
+    :if ([$percentage] < 75) do={ :set warninglevel "50"; /queue simple set $i max-limit=0/0}
+    :if ([$percentage] > 75) do={ :set warninglevel "75"; /queue simple set $i max-limit=0/0}
+  }
+  :if ([$percentage] > 75) do={
+    :if ([$percentage] < 90) do={ :set warninglevel "75"; /queue simple set $i max-limit=0/0}
+    :if ([$percentage] > 90) do={ :set warninglevel "90"; /queue simple set $i max-limit=0/0}
+  }
+  :if ([$percentage] > 90) do={
+    :if ([$percentage] < 100) do={ :set warninglevel "90"; /queue simple set $i max-limit=0/0}
+    :if ([$percentage] > 100) do={ :set warninglevel "99"; /queue simple set $i max-limit=256k/256k ; :log info "$sitename restricted to 256k -  onpeak" }
+  }
+
+# Parse warning necessity
+ :if ([$warninglevel] > $lastonpeakwarning ) do={ :set warn "true" ; :set update "true" }
+ :if ([$warninglevel] = $lastonpeakwarning ) do={ :set warn "false" ; :set update "false" }
+ :if ([$warninglevel] < $lastonpeakwarning ) do={ :set warn "false" ; :set update "true" }
+
+#Update Warning Levels
+ :if ([$update] = true ) do={ :set newwarning $warninglevel } else={ :set newwarning $lastonpeakwarning }
+ :if ([$warn] = true ) do={
+#Check for email address in queue comment
+ :if ([$email] != "" ) do={
+  /tool e-mail send to="$email" from="user@example.com" server="127.0.0.1" subject="$sitename: Usage at $percentage" body="This message is to inform you of the current on peak usage for $sitename
+The current warning trigger is $warninglevel%.
+
+This site has downloaded $megsdowncurrent MB of its onpeak allowance, which is over $percentage% of the $onpeakgigs GB onpeak $offpeakgigs GB offpeak monthly download allowance.
+
+This is an Automatically generated E-mail that is sent out when users reach 50%, 75%, 90% and 100% of their  onpeak/offpeak cap.
+
+Traffic Monitor System,
+user@example.com"
+}
+#Send email to support/accounts also
+  /tool e-mail send to="accounts@example.com" from="user@example.com" server="127.0.0.1" subject="$sitename: Usage at $percentage" body="Current usage for $sitename - trigger is $warninglevel%.
+$megsdowncurrent MB, which is over $percentage% of the $onpeakgigs GB monthly download allowance.
+Traffic Monitor System"
+:log info "Sent Warning Level $warninglevel% to $email"
+}
+#Set new warning level on queue comment
+/queue simple set $i comment="$sitename!$onpeakgigs/$offpeakgigs#$email!$newwarning/$lastoffpeakwarning#$bytestotal/$bytesdownoffpeaksaved"
+/queue simple reset-counters $i
+}
+}
