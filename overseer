@@ -1,0 +1,3 @@
+:global found
+/system script run monthend
+:if ([$found] = "true") do={/system script run monthlyreport; :log info "--Completed Monthly Report--"} else={ /system script run usagereport; :log info "--Completed Usage Report--"}

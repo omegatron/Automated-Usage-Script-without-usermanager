@@ -1,0 +1,81 @@
+/system script run usagereport
+:local pos1
+:local pos2
+:local pos3
+:local pos4
+:local pos5
+:local pos6
+:local pos7
+:local pos8
+:local content
+:local i
+:local sitename
+:local onpeakgigs
+:local offpeakgigs
+:local email
+:local megstotal
+:local totalcurrent
+:local bytesdowncurrent
+:local bytesupcurrent
+:local megsdownonpeakcurrent
+:local megsdownoffpeakcurrent
+:local megsupcurrent
+:local onpeakpercentage
+:local offpeakpercentage
+:local lastwarning
+:local warninglevel
+:local warn
+:local update
+:local newwarning
+:local bytesdownonpeaksaved
+:local bytesdownoffpeaksaved
+:local text
+:local combinedtext
+:set combinedtext ""
+
+#Scripts based on Automated billing script at http://wiki.mikrotik.com/wiki/AutomatedBilling
+# This version created by Andrew Cox - www.accessplus.com.au
+:log info "------ Begining Manual Usage Reports -------"
+
+#For each queue in the list
+:foreach i in=[/queue simple find comment !=""] do={
+
+#Pull name out of queue and divide up accordingly
+:set content [/queue simple get $i comment] 
+
+#Determine variables from comment
+#Format is: sitename ! gigsallowed on peak / gigsallowed off peak # who-to-email ! last warning level(0-50-75-90-99) # stored onpeak / stored offpeak
+:if ([:find $content "!"] != "") do={
+  :set pos1 [:find $content "!"]
+  :set pos4 [:len $content]
+  :set pos2 ([:find [:pick $content ($pos1+1) $pos4] "#"]+$pos1+1)
+  :set pos3 ([:find [:pick $content ($pos2+1) $pos4] "!"]+$pos2)
+  :set sitename [:pick $content 0 ($pos1)]
+  :set pos7 ([:find [:pick $content ($pos1+1) $pos2] "/"]+$pos1+1)
+  :set onpeakgigs [:pick $content ($pos1+1) $pos7]
+  :set offpeakgigs [:pick $content ($pos7+1) $pos2]
+  :set email [:pick $content ($pos2+1) ($pos3+1)]
+  :set totalcurrent [/queue simple get $i bytes]
+  :set lastwarning [:pick $content ($pos3+2) ($pos3+4)]
+  :set pos5 [:find $totalcurrent "/"]
+  :set pos6 [:len $totalcurrent]
+  :set pos8 ([:find [:pick $content ($pos3+5) $pos4] "/"]+$pos3+5)
+  :set bytesdownonpeaksaved ([:pick $content ($pos3+8) $pos8])
+  :set bytesdownoffpeaksaved ([:pick $content ($pos8+1) $pos4])
+  :set megsdownonpeakcurrent ($bytesdownonpeaksaved / 1048576)
+  :set megsdownoffpeakcurrent ($bytesdownoffpeaksaved / 1048576)
+
+#Begin calculating usage percentage
+  :set onpeakpercentage ( ( $bytesdownonpeaksaved * 100) / ($onpeakgigs * 1073741824 ) )
+  :set offpeakpercentage ( ( $bytesdownoffpeaksaved * 100) / ($offpeakgigs * 1073741824 ) )
+  :log info "$sitename: $megsdownonpeakcurrent MB / $megsdownoffpeakcurrent MB of $onpeakgigs GB / $offpeakgigs GB Download Allowance"
+  :set text "$combinedtext \n $sitename: $megsdownonpeakcurrent MB Peak / $megsdownoffpeakcurrent MB Off-Peak of $onpeakgigs GB Peak / $offpeakgigs GB Off-Peak Download Allowance"
+  :set combinedtext "$text"
+ }
+}
+:log info "------ Ending Manual Usage Reports -------"
+:local time [/system clock get time]
+/tool e-mail send server="127.0.0.1" from="user@example.com" to="accounts@example.com" subject="Data Usage Report" body="Download Usage Report - Runtime: $time
+$text
+
+Note: Peak Data is defined as 08:00am to 11:59pm, Off Peak Data is defined as 12:00am to 07:59am. - Month ends 26th (12:00am)"
